@@ -1,0 +1,225 @@
+seu <- T.filt
+seu$orig.ident <- seu$TIG
+names(seu@meta.data)[names(seu@meta.data) == "tissue"] <- "tissue"
+# tissue 列名不变也可以，它已经是 Normal|Tumor 分组
+cols_to_remove <- c(
+"TIG",
+"seurat_clusters",
+grep("^integrated_snn_res", colnames(seu@meta.data), value = TRUE)[
+grep("^integrated_snn_res", colnames(seu@meta.data), value = TRUE) != "integrated_snn_res.0.4"
+]
+)
+seu@meta.data[cols_to_remove] <- NULL
+colnames(seu@meta.data)
+seu <- FindVariableFeatures(seu, nfeatures = 2000)
+scConf <- createConfig(seu)
+makeShinyFiles(seu, scConf = scConf, gex.assay = "RNA", gex.slot = "data",
+default.gene1 = "GAPDH", default.gene2 = "ACTB",
+default.dimred = c("UMAP_1", "UMAP_2"),
+shiny.prefix = "sc1")
+seu1 <- seu
+scConf1 <- scConf
+makeShinyFiles(
+seu1,
+scConf        = scConf1,
+gex.assay     = "RNA",
+gex.slot      = "data",
+default.gene1 = "GAPDH",
+default.gene2 = "ACTB",
+default.dimred = c("UMAP_1", "UMAP_2"),
+shiny.prefix  = "sc1"          # 第一个数据集用 sc1
+)
+seu2 <- readRDS("~/202311_tnbc_caf_05_20240521/GDC.download/mye.shiny.rds")
+scConf2 <- createConfig(seu2)
+makeShinyFiles(
+seu2,
+scConf        = scConf2,
+gex.assay     = "RNA",
+gex.slot      = "data",
+default.gene1 = "GAPDH",
+default.gene2 = "ACTB",
+default.dimred = c("UMAP_1", "UMAP_2"),
+shiny.prefix  = "sc2"          # 第二个数据集用 sc2
+)
+makeShinyCodesMulti(
+shiny.title = "Tumor-Normal scRNAseq atlas of T/NK and myeloid cells", shiny.footnotes = "Powered by ShinyCell",
+shiny.prefix = c("sc1", "sc2"),
+shiny.headers = c("T/NK cells", "myeloid cells"),
+shiny.dir = "./shinyApp")
+runApp("shinyApp")
+
+YS.combined.filt <- readRDS("~/202311_tnbc_caf_05_20240521/202311_tnbc_caf_05_20240812/cell_type_DEG/Fibroblasts/YS.combined.filt.RDS")
+YS.combined.filt$orig.ident <- YS.combined.filt$TIG
+# 需要移除的列
+integrated_cols <- grep("^integrated_snn_res", colnames(YS.combined.filt@meta.data), value = TRUE)
+integrated_cols <- setdiff(integrated_cols, "integrated_snn_res.0.2")
+
+cols_to_remove <- c("TIG", "seurat_clusters", "cell_type_main", "barcode", "X",
+                    "cell_cycle", "cell_type_fine", "group", "cell_type_intermediate",
+                    integrated_cols)
+
+# 交集，确保都存在
+cols_to_remove <- intersect(unique(cols_to_remove), colnames(YS.combined.filt@meta.data))
+print(cols_to_remove)  # 确认一下
+
+YS.combined.filt@meta.data <- YS.combined.filt@meta.data[, !colnames(YS.combined.filt@meta.data) %in% cols_to_remove]
+
+colnames(YS.combined.filt@meta.data)
+
+#------------fibro-shiny-----------#
+YS.combined.filt <- readRDS("~/202311_tnbc_caf_05_20240521/202311_tnbc_caf_05_20240812/cell_type_DEG/Fibroblasts/YS.combined.filt.RDS")
+YS.combined.filt$orig.ident <- YS.combined.filt$TIG
+
+Idents(YS.combined.filt) <- "integrated_snn_res.0.2"#!!!
+YS.combined.filt <- RenameIdents(YS.combined.filt,
+`0` = "Fibro-PI16",
+`1` = "Fibro-CXCL1",
+`2` = "Fibro-POSTN",
+`3` = "Endo-ACKR1",
+`4` = "Peri-RGS5",
+`5` = "Endo-RGCC",
+`8` = "Endo-LYVE1")
+YS.combined.filt@meta.data$cell_type_fine <- YS.combined.filt@active.ident
+integrated_cols <- grep("^integrated_snn_res", colnames(YS.combined.filt@meta.data), value = TRUE)
+integrated_cols <- setdiff(integrated_cols, "integrated_snn_res.0.2")
+cols_to_remove <- c("TIG", "seurat_clusters", "cell_type_main", "barcode", "X",
+"cell_cycle", "group", "cell_type_intermediate",
+integrated_cols)
+YS.combined.filt@meta.data <- YS.combined.filt@meta.data[, !colnames(YS.combined.filt@meta.data) %in% cols_to_remove]
+colnames(YS.combined.filt@meta.data)
+seu3 <- YS.combined.filt
+colnames(seu3@meta.data)
+
+seu3 <- FindVariableFeatures(seu3, nfeatures = 2000)
+scConf3 <- createConfig(seu3)
+makeShinyFiles(seu3, scConf = scConf3, gex.assay = "RNA", gex.slot = "data",
+               default.gene1 = "GAPDH", default.gene2 = "ACTB",
+               default.dimred = c("umap_1", "umap_2"),
+               shiny.prefix = "sc3")
+
+makeShinyCodesMulti(
+shiny.title = "Tumor-Normal scRNAseq atlas of T/NK and myeloid cells and stromal cells", shiny.footnotes = "Powered by ShinyCell",
+shiny.prefix = c("sc1", "sc2","sc3"),
+shiny.headers = c("T/NK cells", "myeloid cells","stromal cells"),
+shiny.dir = "./shinyApp")
+runApp("shinyApp")
+library(rsconnect)
+rsconnect::deployApp('~/202311_tnbc_caf_05_20240521/GDC.download/shinyApp')
+
+makeShinyCodesMulti(
+shiny.title = "Tumor-Normal scRNAseq atlas of triple-negative breast cancer", shiny.footnotes = "Powered by ShinyCell",
+shiny.prefix = c("sc1", "sc2","sc3","sc4"),
+shiny.headers = c("T/NK cells", "myeloid cells","stromal cells","all cells"),
+shiny.dir = "./shinyApp")
+runApp("shinyApp")
+
+
+> # 看看 scConf 到底有哪些列
+> names(scConf1)
+[1] "ID"      "UI"      "fID"     "fUI"     "fCL"     "fRow"    "default" "grp"    
+> 
+> # 如果上一步打印出来的内容太长，可以转成普通 data.frame 逐列看
+> as.data.frame(scConf1[ID == "cellstate"])
+         ID        UI
+1 cellstate cellstate
+                                                                                                                                             fID
+1 CD4-CCR7|CD4-FOXP3|CD4-CXCL13|CD8-GZMK|CD8-CCL5|CD8-CXCL13|CD8-gdT-TRDC|NK-FCGR3A|NK-FGFBP2|Cycling cells|Stress cells|Epithelia|CD4/CD8-PLCG2
+                                                                                                                                             fUI
+1 CD4-CCR7|CD4-FOXP3|CD4-CXCL13|CD8-GZMK|CD8-CCL5|CD8-CXCL13|CD8-gdT-TRDC|NK-FCGR3A|NK-FGFBP2|Cycling cells|Stress cells|Epithelia|CD4/CD8-PLCG2
+                                                                                                      fCL
+1 #A6CEE3|#2A7FB7|#99CD91|#52AF43|#B89B74|#ED4F50|#F06C45|#FDA440|#ED8F47|#B294C7|#825D99|#F8F18F|#B15928
+  fRow default  grp
+1    4       0 TRUE
+# 手动替换 fCL 中的颜色
+old_cols <- scConf1[ID == "cellstate"]$fCL
+
+mapping <- c(
+  "#A6CEE3" = "#D9585A",  # CD4-CCR7
+  "#2A7FB7" = "#FEBE80",  # CD4-FOXP3
+  "#99CD91" = "#4F7CA6",  # CD4-CXCL13
+  "#52AF43" = "#B59830",  # CD8-GZMK
+  "#B89B74" = "#F38D28",  # CD8-CCL5
+  "#ED4F50" = "#F69B9A",  # CD8-CXCL13
+  "#F06C45" = "#D65C06",  # CD8-gdT-TRDC
+  "#FDA440" = "#34bfd6",  # NK-FCGR3A
+  "#ED8F47" = "#CC78AA",  # NK-FGFBP2
+  "#B294C7" = "#9FCBE6",  # Cycling cells
+  "#825D99" = "#56B4EA"   # Stress cells
+  # Epithelia(#F8F18F) 和 CD4/CD8-PLCG2(#B15928) 保留原色；如需改，加在这里
+)
+
+for (o in names(mapping)) {
+  old_cols <- gsub(o, mapping[[o]], old_cols, fixed = TRUE)
+}
+
+scConf1[ID == "cellstate", fCL := old_cols]
+
+# 验证：fCL 应该变成你的新色板 + 两个保留的旧色
+scConf1[ID == "cellstate"]$fCL
+
+
+new_colors <- c(
+  "cDC2-CD1C" = "#F0C6BE",
+  "cDC1-CLEC9A" = "#BC6955",
+  "cDC3-LAMP3" = "#F9E7C0",
+  "pDC-LILRA4" ="#DFD57C",
+  "Mono-FCN1" = "#ACA7C2",
+  "Macro-SPP1" = "#CAE5D7",
+  "Macro-C1QC" = "#A6C694",
+  "Macro-FOLR2" ="#CDE0E8",
+  "Macro-CXCL10" = "#42A6E5"
+
+)
+
+
+DimPlot(seu2,group.by = "integrated_snn_res.0.03")
+DimPlot(seu2,group.by = "integrated_snn_res.0.3")
+
+
+# 手动替换 fCL 中的颜色
+old_cols <- scConf2[ID == "cell_type_fine"]$fCL
+mapping <- c(
+    "#A6CEE3" = "#BC6955",  # cDC2-CD1C   ← 以实际 fID 顺序为准！
+    "#1F78B4" = "#F0C6BE",  # cDC1-CLEC9A
+    "#B2DF8A" = "#F9E7C0",  # cDC3-LAMP3
+    "#33A02C" = "#DFD57C",  # pDC-LILRA4
+    "#FB9A99" = "#ACA7C2",  # Mono-FCN1
+    "#E31A1C" = "#CAE5D7",  # Macro-SPP1
+    "#FDBF6F" = "#A6C694",  # Macro-C1QC
+    "#FF7F00" = "#CDE0E8",  # Macro-FOLR2
+    "#CAB2D6" = "#42A6E5",  # Macro-CXCL10
+    "#6A3D9A" = "#6A3D9A",         # ← 未指定（如 Cycling cells），保留或自定
+    "#FFFF99" = "#FFFF99",         # ← 未指定，保留或自定
+    "#B15928" = "#B15928"          # ← 未指定，保留或自定
+)
+for (o in names(mapping)) {
+    old_cols <- gsub(o, mapping[[o]], old_cols, fixed = TRUE)
+}
+
+scConf2[ID == "cell_type_fine", fCL := old_cols]
+
+# 验证：fCL 应该变成你的新色板 + 两个保留的旧色
+scConf2[ID == "cell_type_fine"]$fCL
+
+
+mapping <- c(
+  "#A6CEE3" = "#A5D1B0",  # cDC2-CD1C   ← 以实际 fID 顺序为准！
+  "#99CD91" = "#CE8ABD",  # cDC1-CLEC9A
+  "#B89B74" = "#FFF7C1",  # cDC3-LAMP3
+  "#F06C45" = "#ADD3F4",  # pDC-LILRA4
+  "#ED8F47" = "#5678D6",  # Mono-FCN1
+  "#825D99" = "#F7C9CF",  # Macro-SPP1
+  "#B15928" = "#7CA3BB")  # Macro-C1QC
+#A6CEE3|#99CD91|#B89B74|#F06C45|#ED8F47|#825D99|#B15928
+
+
+  "Fibro-PI16" = "#A5D1B0",
+  "Fibro-CXCL1" = "#CE8ABD",
+  "Fibro-POSTN" = "#FFF7C1",
+  "Endo-ACKR1" = "#ADD3F4",
+  "Endo-RGCC" = "#F7C9CF",
+  "Endo-LYVE1" = "#7CA3BB",
+  "Peri-RGS5" = "#5678D6"
+)
+
+
